@@ -24,19 +24,59 @@ async function mockRecommend(_input) {
         calories: 350,
         image_url: "https://example.com/salad.jpg",
         url: "https://example.com",
-        latitude: 12.34, 
-        longitude: 12.34
-      }
-    ]
+        latitude: 12.34,
+        longitude: 12.34,
+      },
+    ],
   };
+}
+
+function transformResponse(rawMenusArray, requestedMeals) {
+  const finalResponse = {
+    recommendations: {},
+  };
+
+  if (!requestedMeals || requestedMeals.length === 0) {
+    return finalResponse;
+  }
+  for (const meal of requestedMeals) {
+    finalResponse.recommendations[meal] = [];
+  }
+
+  for (const item of rawMenusArray) {
+    const transformedItem = {
+      restaurant_name: item.restaurant_name,
+      name: item.name,
+      description: item.description,
+      calories: item.calories,
+      image_url: item.image_url,
+      url: item.url,
+      location: {
+        latitude: item.latitude,
+        longitude: item.longitude,
+      },
+    };
+
+    const mealType = item.meals;
+    if (finalResponse.recommendations[mealType]) {
+      finalResponse.recommendations[mealType].push(transformedItem);
+    }
+  }
+
+  return finalResponse;
 }
 
 app.post("/recommend", validate(RecommendSchema), async (req, res, next) => {
   try {
     const aiInput = { user: req.valid, candidates: [] }; // 추후 후보 필터 추가 가능
     const result = await mockRecommend(aiInput);
-    res.json({ success: true, menus: result.menus });
-  } catch (e) { next(e); }
+
+    const finalResponse = transformResponse(result.menus, req.valid.meals);
+
+    res.status(200).json(finalResponse);
+  } catch (e) {
+    next(e);
+  }
 });
 
 // 404
