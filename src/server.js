@@ -1,14 +1,38 @@
 // src/server.js
 import "dotenv/config";
 import express from "express";
+import swaggerUi from "swagger-ui-express";
+import swaggerJsdoc from "swagger-jsdoc";
 import cors from "cors";
 import { validate } from "./validate.js";
 import { RecommendSchema } from "./schema.js";
 import { errorHandler } from "./error.js";
+import { Restaurant } from "./models/restaurant.model.js";
+import { Menu } from "./models/menu.model.js";
+
+const options = {
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "MenuMate API",
+      version: "1.0.0",
+      description: "메뉴 추천 서비스 MenuMate의 API 문서입니다.",
+    },
+    servers: [
+      {
+        url: `http://localhost:${process.env.PORT || 3000}`,
+      },
+    ],
+  },
+  apis: ["./src/server.js"],
+};
+
+const specs = swaggerJsdoc(options);
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 
 app.get("/health", (_, res) => res.json({ ok: true }));
 
@@ -76,6 +100,27 @@ app.post("/recommend", validate(RecommendSchema), async (req, res, next) => {
     res.status(200).json(finalResponse);
   } catch (e) {
     next(e);
+  }
+});
+
+app.get("/api/restaurants", async (req, res, next) => {
+  try {
+    const restaurants = await Restaurant.findAll();
+    res.json(restaurants);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/restaurants/:id/menus", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    console.log(`--- API CALL: /api/restaurants/${id}/menus ---`);
+    const menus = await Menu.findByRestaurantId(id);
+    console.log("--- DB RESULT:", menus);
+    res.json(menus);
+  } catch (error) {
+    next(error);
   }
 });
 
