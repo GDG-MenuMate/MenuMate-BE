@@ -1,0 +1,13 @@
+# docker-compose.yml
+
+services:
+  db:
+    image: postgres
+    restart: always
+    container_name: menumate-db
+    environment:
+      POSTGRES_DB: ${PGDATABASE}
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+    ports:
+      - "5434:5432"
