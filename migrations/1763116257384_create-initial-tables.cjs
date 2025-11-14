@@ -8,22 +8,23 @@ exports.up = (pgm) => {
     CREATE TABLE restaurants (
         restaurants_id INT PRIMARY KEY,
         name VARCHAR(255),
-        address VARCHAR(255),
+        address TEXT,
         open_time TIME,
         close_time TIME,
-        url VARCHAR(255),
+        url TEXT,
         latitude DOUBLE PRECISION,
         longitude DOUBLE PRECISION,
-        rating DECIMAL(3, 1)
+        rating DECIMAL(3, 1),
+        campus TEXT[]
     );
 
     -- 2. 메뉴 테이블
     CREATE TABLE menus (
         name VARCHAR(255),
         restaurants_id INT REFERENCES restaurants(restaurants_id) ON DELETE CASCADE,
-        description VARCHAR(255),
+        description TEXT,
         price INT,
-        calories INT,
+        calories DECIMAL(5, 1),
         tags TEXT[],
         PRIMARY KEY (name, restaurants_id)
     );

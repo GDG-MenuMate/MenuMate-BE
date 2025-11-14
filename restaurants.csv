@@ -1,0 +1,2 @@
+restaurants_id,name,address,open_time,close_time,url,latitude,longitude,rating,campus
+1,샐러디 고대안암점,서울 성북구 고려대로28길 12 1층,10:00,21:00,"https://map.naver.com/p/entry/place/1742068240?c=15.00,0,0,0,dh&placePath=/home?fromPanelNum=1&additionalHeight=76&timestamp=202511142148&locale=ko&svcName=map_pcv5&from=map&fromPanelNum=1&additionalHeight=76&timestamp=202511142142&locale=ko&svcName=map_pcv5",37.5857265,127.0305599,4.2,"{""humanities_campus"",  ""science_campus""}"
