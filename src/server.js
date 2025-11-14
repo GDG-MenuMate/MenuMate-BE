@@ -5,6 +5,7 @@ import cors from "cors";
 import { validate } from "./validate.js";
 import { RecommendSchema } from "./schema.js";
 import { errorHandler } from "./error.js";
+import { callAI } from "./aiCient.js";
 
 const app = express();
 app.use(cors());
@@ -12,7 +13,7 @@ app.use(express.json());
 
 app.get("/health", (_, res) => res.json({ ok: true }));
 
-// mock 응답 (필요시 실제 AI 호출로 교체)
+/* mock 응답 (필요시 실제 AI 호출로 교체)
 async function mockRecommend(_input) {
   return {
     menus: [
@@ -29,6 +30,41 @@ async function mockRecommend(_input) {
       },
     ],
   };
+}
+  */
+ 
+app.post("/recommend", validate(RecommendSchema), async (req, res, next) => {
+  try {
+    // 1) schema.js 검증 통과된 값
+    const valid = req.valid;
+
+    // 2) AI에 보낼 JSON 만들기
+    const aiInput = buildAIInput(valid);
+
+    // 3) AI 서버 호출 (aiClient.js)
+    const result = await callAI(aiInput);
+
+    // 4) FE용 응답으로 가공
+    const finalResponse = transformResponse(result.menus, req.valid.meals);
+
+    // 5) FE에 응답
+    res.status(200).json(finalResponse);
+  } catch (e) {
+    next(e);
+  }
+});
+
+function buildAIInput(valid) {
+    return {
+        user: {
+        category: valid.category,
+        dietInfo: valid.dietInfo || null,
+        campus: valid.campus || [],
+        meals: valid.meals,
+        price: valid.price || null,
+        prompt: valid.prompt || "",
+        },
+    }
 }
 
 function transformResponse(rawMenusArray, requestedMeals) {
@@ -65,19 +101,6 @@ function transformResponse(rawMenusArray, requestedMeals) {
 
   return finalResponse;
 }
-
-app.post("/recommend", validate(RecommendSchema), async (req, res, next) => {
-  try {
-    const aiInput = { user: req.valid, candidates: [] }; // 추후 후보 필터 추가 가능
-    const result = await mockRecommend(aiInput);
-
-    const finalResponse = transformResponse(result.menus, req.valid.meals);
-
-    res.status(200).json(finalResponse);
-  } catch (e) {
-    next(e);
-  }
-});
 
 // 404
 app.use((req, res) => {
