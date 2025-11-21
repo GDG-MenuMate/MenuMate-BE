@@ -7,23 +7,24 @@ exports.up = (pgm) => {
     -- 1. 식당 테이블
     CREATE TABLE restaurants (
         restaurants_id INT PRIMARY KEY,
-        name VARCHAR(255),
-        address VARCHAR(255),
+        name TEXT,
+        address TEXT,
         open_time TIME,
         close_time TIME,
-        url VARCHAR(255),
+        url TEXT,
         latitude DOUBLE PRECISION,
         longitude DOUBLE PRECISION,
-        rating DECIMAL(3, 1)
+        rating DECIMAL(3, 1),
+        campus TEXT[]
     );
 
     -- 2. 메뉴 테이블
     CREATE TABLE menus (
-        name VARCHAR(255),
+        name TEXT,
         restaurants_id INT REFERENCES restaurants(restaurants_id) ON DELETE CASCADE,
-        description VARCHAR(255),
+        description TEXT,
         price INT,
-        calories INT,
+        calories DECIMAL(5, 1),
         tags TEXT[],
         PRIMARY KEY (name, restaurants_id)
     );
@@ -36,7 +37,7 @@ exports.up = (pgm) => {
 
     -- 4. 메뉴-카테고리 조인 테이블
     CREATE TABLE menu_categories (
-        menu_name VARCHAR(255),
+        menu_name TEXT,
         restaurants_id INT,
         category_id INT REFERENCES categories(category_id) ON DELETE CASCADE,
         

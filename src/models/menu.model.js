@@ -29,4 +29,26 @@ export const Menu = {
       throw error;
     }
   },
+
+  findDetailByNames: async (restaurantName, menuName) => {
+    try {
+      const query = `
+        SELECT 
+          m.name, m.description, m.calories, m.price,
+          r.name as restaurant_name, r.latitude, r.longitude, r.url as restaurant_url
+        FROM menus m
+        JOIN restaurants r ON m.restaurants_id = r.restaurants_id
+        WHERE r.name = $1 AND m.name = $2
+      `;
+
+      const { rows } = await pool.query(query, [restaurantName, menuName]);
+      return rows[0];
+    } catch (error) {
+      console.error(
+        `Error finding detail for menu "${menuName}" at "${restaurantName}":`,
+        error
+      );
+      throw error;
+    }
+  },
 };

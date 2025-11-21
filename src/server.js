@@ -39,70 +39,90 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 
 app.get("/health", (_, res) => res.json({ ok: true }));
 
-/* mock 응답 (필요시 실제 AI 호출로 교체)
+//mock 응답 (필요시 실제 AI 호출로 교체)
 async function mockRecommend(_input) {
   return {
-    menus: [
-      {
-        restaurant_name: "샐러디",
-        name: "닭가슴살 샐러드",
-        description: "...",
-        meals: "LUNCH",
-        calories: 350,
-        image_url: "https://example.com/salad.jpg",
-        url: "https://example.com",
-        latitude: 12.34,
-        longitude: 12.34,
-      },
-    ],
+    morning: null, // 아침은 추천 결과가 없는 경우 예시
+
+    lunch: {
+      restaurant_name: "샐러디 고대안암점",
+      menu_name: "더블 삼겹 박스",
+      price: 8500,
+      justification:
+        "든든한 밥 종류를 찾으시는 요청에 맞춰, 자연계 캠퍼스 근처의 한식당 B에서 판매하는 제육볶음을 추천합니다.",
+      new_score: 0.95,
+      reason_hashtags: ["#든든한", "#밥", "#고기"],
+    },
+
+    dinner: {
+      restaurant_name: "샐러디 고대안암점",
+      menu_name: "더블 삼겹 박스",
+      price: 9000,
+      justification:
+        "저녁 식사로는 든든한 국물이 있는 라멘을 추천합니다. 높은 평점을 받고 있습니다.",
+      new_score: 0.92,
+      reason_hashtags: ["#국물", "#면", "#높은평점"],
+    },
   };
 }
-  */
 
 function buildAIInput(valid) {
-    return {
-        user: {
-        category: valid.category,
-        dietInfo: valid.dietInfo || null,
-        campus: valid.campus || [],
-        meals: valid.meals,
-        price: valid.price || null,
-        prompt: valid.prompt || "",
-        },
-    }
+  return {
+    user: {
+      category: valid.category,
+      dietInfo: valid.dietInfo || null,
+      campus: valid.campus || [],
+      meals: valid.meals,
+      price: valid.price || null,
+      prompt: valid.prompt || "",
+    },
+  };
 }
 
-function transformResponse(rawMenusArray, requestedMeals) {
+async function transformResponse(aiResult) {
   const finalResponse = {
     recommendations: {},
   };
 
-  if (!requestedMeals || requestedMeals.length === 0) {
-    return finalResponse;
-  }
-  for (const meal of requestedMeals) {
-    finalResponse.recommendations[meal] = [];
-  }
+  const processItem = async (aiItem) => {
+    if (!aiItem) return null;
 
-  for (const item of rawMenusArray) {
-    const transformedItem = {
-      restaurant_name: item.restaurant_name,
-      name: item.name,
-      description: item.description,
-      calories: item.calories,
-      image_url: item.image_url,
-      url: item.url,
+    let dbData = null;
+    try {
+      dbData = await Menu.findDetailByNames(
+        aiItem.restaurant_name,
+        aiItem.menu_name
+      );
+    } catch (e) {
+      console.warn(
+        `[Warning] DB lookup failed for ${aiItem.menu_name}: ${e.message}`
+      );
+    }
+
+    return {
+      restaurant_name: aiItem.restaurant_name,
+      name: aiItem.menu_name,
+      description:
+        aiItem.justification || dbData?.description || "AI 추천 메뉴입니다.",
+      price: dbData?.price || aiItem.price,
+      calories: dbData?.calories || "",
+      url: dbData?.restaurant_url || "",
       location: {
-        latitude: item.latitude,
-        longitude: item.longitude,
+        latitude: dbData?.latitude || 0,
+        longitude: dbData?.longitude || 0,
       },
     };
+  };
 
-    const mealType = item.meals;
-    if (finalResponse.recommendations[mealType]) {
-      finalResponse.recommendations[mealType].push(transformedItem);
-    }
-  }
+  const [breakfast, lunch, dinner] = await Promise.all([
+    aiResult.morning ? processItem(aiResult.morning) : null,
+    aiResult.lunch ? processItem(aiResult.lunch) : null,
+    aiResult.dinner ? processItem(aiResult.dinner) : null,
+  ]);
+
+  if (breakfast) finalResponse.recommendations.BREAKFAST = [breakfast];
+  if (lunch) finalResponse.recommendations.LUNCH = [lunch];
+  if (dinner) finalResponse.recommendations.DINNER = [dinner];
 
   return finalResponse;
 }
@@ -116,10 +136,12 @@ app.post("/recommend", validate(RecommendSchema), async (req, res, next) => {
     const aiInput = buildAIInput(valid);
 
     // 3) AI 서버 호출 (aiClient.js)
-    const result = await callAI(aiInput);
+    // const result = await callAI(aiInput);
+    // mock test
+    const mockResponse = await mockRecommend(valid);
 
     // 4) FE용 응답으로 가공
-    const finalResponse = transformResponse(result.menus, req.valid.meals);
+    const finalResponse = await transformResponse(mockResponse);
 
     // 5) FE에 응답
     res.status(200).json(finalResponse);

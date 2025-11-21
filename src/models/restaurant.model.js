@@ -22,4 +22,29 @@ export const Restaurant = {
       throw error;
     }
   },
+
+  findByName: async (name) => {
+    try {
+      const query = "SELECT * FROM restaurants WHERE name = $1";
+      const { rows } = await pool.query(query, [name]);
+      return rows[0];
+    } catch (error) {
+      console.error(`Error finding restaurant with name "${name}": `, error);
+      throw error;
+    }
+  },
+
+  findByCampus: async (campusName) => {
+    try {
+      const query = "SELECT * FROM restaurants WHERE $1 = ANY(campus)";
+      const { rows } = await pool.query(query, [campusName]);
+      return rows;
+    } catch (error) {
+      console.error(
+        `Error finding restaurants in campus "${campusName}":`,
+        error
+      );
+      throw error;
+    }
+  },
 };
