@@ -26,7 +26,8 @@ export const RecommendSchema = z.object({
       error: "MISSING_DIET_TYPE", msg: "다이어트 식단 선택 시 키, 몸무게 작성이 필수입니다."
     })});
   }
-  if (v.dietInfo) {
+  // 다이어트 카테고리일 때만 height와 weight 검증
+  if (v.category === "DIET" && v.dietInfo) {
     const { height, weight } = v.dietInfo;
     // height와 weight가 있을 때만 범위 검증
     if (height != null && (height < 100 || height > 250)) {
