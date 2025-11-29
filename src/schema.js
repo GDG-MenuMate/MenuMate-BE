@@ -4,15 +4,15 @@ import { z } from "zod";
 export const RecommendSchema = z.object({
   category: z.enum(["DIET","VEGETARIAN","LOW_SUGAR","HALAL"]).optional(),
   dietInfo: z.object({
-    height: z.coerce.number().int().positive(),
-    weight: z.coerce.number().int().positive()
+    height: z.coerce.number().int().nonnegative().optional(),
+    weight: z.coerce.number().int().nonnegative().optional()
   }).optional(),
   campus: z.array(z.string()).optional(),
   meals: z.array(z.enum(["BREAKFAST","LUNCH","DINNER"]))
           .min(1, "meals 배열은 최소 1개 이상이어야 합니다."),
   price: z.object({
     minPrice: z.coerce.number().int().nonnegative().optional(),
-    maxPrice: z.coerce.number().int().optional()
+    maxPrice: z.coerce.number().int().nonnegative().optional()
   }).optional(),
   prompt: z.string().optional()
 }).superRefine((v, ctx) => {
@@ -28,9 +28,15 @@ export const RecommendSchema = z.object({
   }
   if (v.dietInfo) {
     const { height, weight } = v.dietInfo;
-    if (height < 100 || height > 250 || weight < 30 || weight > 300) {
+    // height와 weight가 있을 때만 범위 검증
+    if (height != null && (height < 100 || height > 250)) {
       ctx.addIssue({ code: "custom", message: JSON.stringify({
-        error: "INVALID_DIET_TYPE", msg: "키, 몸무게 입력 값을 다시 확인해주세요."
+        error: "INVALID_DIET_TYPE", msg: "키 입력 값을 다시 확인해주세요. (100-250cm)"
+      })});
+    }
+    if (weight != null && (weight < 30 || weight > 300)) {
+      ctx.addIssue({ code: "custom", message: JSON.stringify({
+        error: "INVALID_DIET_TYPE", msg: "몸무게 입력 값을 다시 확인해주세요. (30-300kg)"
       })});
     }
   }
