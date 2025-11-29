@@ -11,7 +11,7 @@ import { RecommendSchema } from "./schema.js";
 import { errorHandler } from "./error.js";
 import { Restaurant } from "./models/restaurant.model.js";
 import { Menu } from "./models/menu.model.js";
-import { callAI } from "./aiClient.js";
+import { callAI, checkAIHealth } from "./aiClient.js";
 
 const options = {
   definition: {
@@ -37,7 +37,37 @@ app.use(cors());
 app.use(express.json());
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 
-app.get("/health", (_, res) => res.json({ ok: true }));
+// AI 서버 상태 캐시 (최신 상태 유지)
+let aiServerStatus = { available: false, lastChecked: null };
+
+// AI 서버 상태 확인 함수
+async function updateAIServerStatus() {
+  try {
+    const status = await checkAIHealth();
+    aiServerStatus = {
+      ...status,
+      lastChecked: new Date().toISOString(),
+    };
+    return status;
+  } catch (error) {
+    aiServerStatus = {
+      available: false,
+      error: error.message,
+      lastChecked: new Date().toISOString(),
+    };
+    return aiServerStatus;
+  }
+}
+
+// Health check 엔드포인트 - 백엔드 및 AI 서버 상태 확인
+app.get("/health", async (_, res) => {
+  const aiStatus = await updateAIServerStatus();
+  
+  res.json({
+    backend: { ok: true },
+    aiServer: aiStatus,
+  });
+});
 
 //mock 응답 (필요시 실제 AI 호출로 교체)
 async function mockRecommend(_input) {
@@ -136,12 +166,12 @@ app.post("/recommend", validate(RecommendSchema), async (req, res, next) => {
     const aiInput = buildAIInput(valid);
 
     // 3) AI 서버 호출 (aiClient.js)
-    // const result = await callAI(aiInput);
-    // mock test
-    const mockResponse = await mockRecommend(valid);
+    const result = await callAI(aiInput);
+    // mock test (개발/테스트용)
+    // const mockResponse = await mockRecommend(valid);
 
     // 4) FE용 응답으로 가공
-    const finalResponse = await transformResponse(mockResponse);
+    const finalResponse = await transformResponse(result);
 
     // 5) FE에 응답
     res.status(200).json(finalResponse);
@@ -178,4 +208,24 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Server http://localhost:${port}`));
+app.listen(port, async () => {
+  console.log(`Server http://localhost:${port}`);
+  
+  // 서버 시작 시 AI 서버 연결 테스트
+  console.log("\n AI 서버 연결 확인 중...");
+  const aiStatus = await updateAIServerStatus();
+  
+  if (aiStatus.available) {
+    console.log("AI 서버 연결 성공!");
+    /* if (process.env.AI_ENDPOINT) {
+      console.log(`   엔드포인트: ${process.env.AI_ENDPOINT}`);
+    } */
+  } else {
+    console.log("AI 서버 연결 실패");
+    console.log(`   오류: ${aiStatus.error || "알 수 없는 오류"}`);
+    if (!process.env.AI_ENDPOINT) {
+      console.log("   AI_ENDPOINT 환경 변수가 설정되지 않았습니다.");
+    }
+  }
+  console.log("");
+});
