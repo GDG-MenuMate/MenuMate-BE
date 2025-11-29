@@ -4,15 +4,15 @@ import { z } from "zod";
 export const RecommendSchema = z.object({
   category: z.enum(["DIET","VEGETARIAN","LOW_SUGAR","HALAL"]).optional(),
   dietInfo: z.object({
-    height: z.number().int().positive(),
-    weight: z.number().int().positive()
+    height: z.coerce.number().int().positive(),
+    weight: z.coerce.number().int().positive()
   }).optional(),
   campus: z.array(z.string()).optional(),
   meals: z.array(z.enum(["BREAKFAST","LUNCH","DINNER"]))
           .min(1, "meals 배열은 최소 1개 이상이어야 합니다."),
   price: z.object({
-    minPrice: z.number().int().nonnegative().optional(),
-    maxPrice: z.number().int().optional()
+    minPrice: z.coerce.number().int().nonnegative().optional(),
+    maxPrice: z.coerce.number().int().optional()
   }).optional(),
   prompt: z.string().optional()
 }).superRefine((v, ctx) => {
