@@ -26,7 +26,10 @@ export async function callAI(body) {
 
   const res = await fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "true", // ngrok 브라우저 경고 스킵
+    },
     body: JSON.stringify(body),
   });
 
@@ -40,4 +43,51 @@ export async function callAI(body) {
 
   // AI는 { menus: [...] } 형태로 응답한다고 가정
   return res.json();
+}
+
+/**
+ * AI 서버 상태 확인 (health check)
+ */
+export async function checkAIHealth() {
+  const endpoint = process.env.AI_ENDPOINT;
+  
+  if (!endpoint) {
+    return {
+      available: false,
+      error: "AI_ENDPOINT is not set",
+    };
+  }
+
+  // AI 서버의 /health 엔드포인트 확인
+  const baseUrl = endpoint.replace("/recommend", "");
+  const healthUrl = `${baseUrl}/health`;
+
+  try {
+    const res = await fetch(healthUrl, {
+      method: "GET",
+      headers: {
+        "ngrok-skip-browser-warning": "true",
+      },
+    });
+
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return {
+        available: true,
+        status: res.status,
+        response: data,
+      };
+    } else {
+      return {
+        available: false,
+        status: res.status,
+        error: `AI server returned ${res.status}`,
+      };
+    }
+  } catch (error) {
+    return {
+      available: false,
+      error: error.message,
+    };
+  }
 }
